@@ -1,11 +1,19 @@
-import { TonConnectUIProvider, useTonConnectUI } from '@tonconnect/ui-react';
+import {
+  TonConnectUIProvider,
+  TonConnectButton,
+  useTonWallet,
+  useTonConnectUI
+} from '@tonconnect/ui-react';
+
 import { beginCell, Address } from '@ton/core';
 
 const COLLECTION =
   import.meta.env.VITE_COLLECTION_ADDRESS ||
   "EQCHhJ3uh07AyJ9Q4U5hk71ykvULGtzNl1oJJ4Uk76UW3ptb";
 
-// ── BUILD PAYLOAD ──
+// ─────────────────────────────────────────────
+// BUILD PAYLOAD
+// ─────────────────────────────────────────────
 function buildMintPayload(index, owner) {
   const content = beginCell()
     .storeStringTail(
@@ -22,29 +30,51 @@ function buildMintPayload(index, owner) {
     .toString("base64");
 }
 
-// ── INNER APP ──
+// ─────────────────────────────────────────────
+// INNER APP
+// ─────────────────────────────────────────────
 function InnerApp() {
+  const wallet = useTonWallet();
   const [tonConnectUI] = useTonConnectUI();
 
   async function mint() {
     try {
+
+      if (!wallet) {
+        alert("Connect wallet first");
+        return;
+      }
+
       const index = Date.now();
 
-      // отправляем tx (кошелёк сам откроется)
-      await tonConnectUI.sendTransaction({
+      const payload = buildMintPayload(
+        index,
+        wallet.account.address
+      );
+
+      console.log("PAYLOAD:", payload);
+
+      const tx = {
         validUntil: Math.floor(Date.now() / 1000) + 600,
         messages: [
           {
             address: COLLECTION,
-            amount: "50000000", // 0.05 TON gas
-            payload: buildMintPayload(index, tonConnectUI.account?.address)
+            amount: "50000000",
+            payload
           }
         ]
-      });
+      };
 
-      alert("Mint sent!");
+      console.log("TX:", tx);
+
+      const result = await tonConnectUI.sendTransaction(tx);
+
+      console.log("RESULT:", result);
+
+      alert("NFT mint transaction sent!");
+
     } catch (e) {
-      console.error(e);
+      console.error("MINT ERROR:", e);
       alert("Mint failed");
     }
   }
@@ -53,6 +83,11 @@ function InnerApp() {
     <div style={{ padding: 20 }}>
       <h1>TON NFT Mint</h1>
 
+      <TonConnectButton />
+
+      <br />
+      <br />
+
       <button onClick={mint}>
         Mint NFT
       </button>
@@ -60,11 +95,13 @@ function InnerApp() {
   );
 }
 
-// ── ROOT APP ──
+// ─────────────────────────────────────────────
+// ROOT APP
+// ─────────────────────────────────────────────
 export default function App() {
   return (
     <TonConnectUIProvider
-      manifestUrl="https://deploy-insho36gk-mintsims-projects-ae9861fe.vercel.app/tonconnect-manifest.json"
+      manifestUrl="https://mint-sim-git-main-mintsims-projects-ae9861fe.vercel.app/tonconnect-manifest.json"
     >
       <InnerApp />
     </TonConnectUIProvider>
